@@ -14,13 +14,16 @@ Options:
 
 function template(name: string): string {
   return `name: ${name}
+# engine: robocopy   # robocopy (Windows mirror/sync) | builtin (snapshots)
+# mode: mirror       # mirror (destination tracks sources 1:1) | copy (additive)
 sources:
   - path: ./data
     exclude: ["node_modules", "*.tmp"]
 destination:
   path: ./backups/${name}
-retention:
-  keep: 7
+# retention only applies to the builtin (snapshot) engine
+# retention:
+#   keep: 7
 `;
 }
 

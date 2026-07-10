@@ -5,6 +5,7 @@ import * as validateCmd from "./commands/validate.js";
 import * as backupCmd from "./commands/backup.js";
 import * as listCmd from "./commands/list.js";
 import * as restoreCmd from "./commands/restore.js";
+import * as serveCmd from "./commands/serve.js";
 
 type CommandRunner = (argv: string[]) => Promise<number>;
 
@@ -14,6 +15,7 @@ const COMMANDS: Record<string, CommandRunner> = {
   backup: backupCmd.run,
   list: listCmd.run,
   restore: restoreCmd.run,
+  serve: serveCmd.run,
 
   help: helpCmd.run,
   "-h": helpCmd.run,

@@ -6,11 +6,12 @@ export async function run(_argv: string[]): Promise<number> {
 Usage: ${BIN_NAME} <command> [options]
 
 Commands:
-  init <file>              scaffold a new ${CONFIG_EXTENSION} config
-  validate <file>          check a ${CONFIG_EXTENSION} config for errors
-  backup <file>             run a backup for a ${CONFIG_EXTENSION} config
-  list <file>               list snapshots in a config's destination
+  init <file>               scaffold a new ${CONFIG_EXTENSION} config
+  validate <file>           check a ${CONFIG_EXTENSION} config for errors
+  backup <file>             run a backup (robocopy mirror/sync, or builtin snapshots)
+  list <file>               list snapshots in a config's destination (builtin engine)
   restore <file> <target>   restore a snapshot into <target> (--id <snapshot>)
+  serve                     run the JSON-RPC backup daemon over stdio (for the container)
   help                      show this help
 
 Run '${BIN_NAME} <command> --help' for command-specific options.

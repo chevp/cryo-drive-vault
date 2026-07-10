@@ -18,8 +18,11 @@ export async function run(argv: string[]): Promise<number> {
   }
 
   const config = loadConfig(first);
+  const engine = config.engine ?? (process.platform === "win32" ? "robocopy" : "builtin");
   section("config");
   kv("name", config.name);
+  kv("engine", `${engine}${config.engine ? "" : c.dim(" (default)")}`);
+  if (engine === "robocopy") kv("mode", config.mode ?? `mirror${c.dim(" (default)")}`);
   kv("sources", String(config.sources.length));
   kv("destination", config.destination.path);
   if (config.retention) kv("retention", `keep ${config.retention.keep}`);

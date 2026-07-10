@@ -30,7 +30,11 @@ interface RawLine {
 }
 
 export function parseYaml(src: string): YamlValue {
-  const raw = src.replace(/\r\n/g, "\n").split("\n");
+  // Strip a leading UTF-8 BOM. Windows editors (and PowerShell's Set-Content)
+  // routinely prepend one; JS trimStart() treats U+FEFF as whitespace, so an
+  // un-stripped BOM would be miscounted as one column of indentation on line 1.
+  const withoutBom = src.charCodeAt(0) === 0xfeff ? src.slice(1) : src;
+  const raw = withoutBom.replace(/\r\n/g, "\n").split("\n");
   const lines: RawLine[] = [];
   for (let i = 0; i < raw.length; i++) {
     const original = raw[i] ?? "";

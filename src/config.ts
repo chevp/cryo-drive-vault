@@ -16,8 +16,31 @@ export interface CdvRetention {
   keep: number;
 }
 
+/**
+ * Which program actually moves the bytes.
+ *   - `robocopy` — Windows-native mirror/sync (professional CLI). No history:
+ *     the destination is kept 1:1 in step with the sources.
+ *   - `builtin`  — hand-rolled Node fs snapshot copier (timestamped snapshots
+ *     + retention). Cross-platform fallback, keeps history.
+ * When unset, the engine is resolved at run time: `robocopy` on win32, else
+ * `builtin` (see engine/index.ts).
+ */
+export type CdvEngine = "robocopy" | "builtin";
+
+/**
+ * How the engine treats the destination.
+ *   - `mirror` — destination becomes an exact copy of the sources; files no
+ *     longer present in a source are deleted from the destination (robocopy /MIR).
+ *   - `copy`   — additive: new/changed files are copied, nothing is deleted.
+ * Only meaningful for the `robocopy` engine (the `builtin` engine always writes
+ * a fresh timestamped snapshot).
+ */
+export type CdvMode = "mirror" | "copy";
+
 export interface CdvConfig {
   name: string;
+  engine?: CdvEngine;
+  mode?: CdvMode;
   sources: CdvSource[];
   destination: CdvDestination;
   retention?: CdvRetention;
@@ -58,6 +81,22 @@ export function validateConfig(doc: YamlValue): CdvConfig {
     throw new CdvConfigError(`sources[${index}] must be a path string or a { path, exclude } mapping`);
   });
 
+  let engine: CdvEngine | undefined;
+  if (root.engine !== undefined) {
+    if (root.engine !== "robocopy" && root.engine !== "builtin") {
+      throw new CdvConfigError("'engine' must be 'robocopy' or 'builtin'");
+    }
+    engine = root.engine;
+  }
+
+  let mode: CdvMode | undefined;
+  if (root.mode !== undefined) {
+    if (root.mode !== "mirror" && root.mode !== "copy") {
+      throw new CdvConfigError("'mode' must be 'mirror' or 'copy'");
+    }
+    mode = root.mode;
+  }
+
   const destinationRecord = asRecord(root.destination);
   if (!destinationRecord || typeof destinationRecord.path !== "string") {
     throw new CdvConfigError("'destination.path' is required and must be a string");
@@ -75,6 +114,8 @@ export function validateConfig(doc: YamlValue): CdvConfig {
 
   return {
     name: root.name,
+    engine,
+    mode,
     sources,
     destination: { path: destinationRecord.path },
     retention,
