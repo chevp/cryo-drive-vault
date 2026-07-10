@@ -1,0 +1,33 @@
+{
+  "name": "cryo-drive-vault",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Backup vault module for kosmos — configure backups via .cdv (YAML) files",
+  "type": "module",
+  "bin": {
+    "cdv": "bin/cdv"
+  },
+  "main": "./dist/lib.js",
+  "types": "./dist/lib.d.ts",
+  "exports": {
+    ".": "./dist/lib.js"
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
