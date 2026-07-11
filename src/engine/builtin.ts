@@ -16,20 +16,34 @@ export class BuiltinEngine implements BackupEngine {
   }
 
   async run(config: CdvConfig, hooks: RunHooks): Promise<BackupResult> {
-    hooks.onLog?.(`builtin snapshot copy → ${config.destination.path}`);
-    const result = runSnapshotBackup(config);
+    hooks.onLog?.(
+      `builtin snapshot copy${config.compress ? " (tar.gz)" : ""} → ${config.destination.path}`,
+    );
+    let filesDone = 0;
+    let bytesDone = 0;
+    const result = await runSnapshotBackup(config, {
+      signal: hooks.signal,
+      onCopy: (path, bytes) => {
+        filesDone += 1;
+        bytesDone += bytes;
+        // filesTotal is unknown without a pre-scan; stream the running count +
+        // bytes + current path so the UI shows live activity (and cancel stays snappy).
+        hooks.onProgress?.({ filesDone, filesTotal: 0, bytesDone, bytesTotal: 0, currentPath: path });
+      },
+    });
+    if (result.compressed) hooks.onLog?.(`compressed snapshot → ${result.path}`);
     hooks.onProgress?.({
-      filesDone: result.sources,
-      filesTotal: result.sources,
-      bytesDone: 0,
-      bytesTotal: 0,
+      filesDone: result.files,
+      filesTotal: result.files,
+      bytesDone: result.bytes,
+      bytesTotal: result.bytes,
       currentPath: result.path,
     });
     return {
       engine: this.name,
-      filesCopied: result.sources,
+      filesCopied: result.files,
       filesDeleted: 0,
-      bytesCopied: 0,
+      bytesCopied: result.bytes,
       destination: result.path,
       snapshotId: result.id,
     };

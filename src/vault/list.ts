@@ -1,24 +1,31 @@
 import { readdirSync } from "node:fs";
 import type { CdvConfig } from "../config.js";
-import { isSnapshotId, snapshotDate } from "./snapshot.js";
+import { snapshotDate, snapshotIdFromEntry } from "./snapshot.js";
 
 export interface SnapshotInfo {
   id: string;
   createdAt: Date | null;
+  /** True when stored as a `<id>.tar.gz` archive rather than a plain directory. */
+  compressed: boolean;
 }
 
 export function listSnapshots(config: CdvConfig): SnapshotInfo[] {
-  let entries: string[];
+  let ids: Array<{ id: string; compressed: boolean }>;
   try {
-    entries = readdirSync(config.destination.path, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory() && isSnapshotId(entry.name))
-      .map((entry) => entry.name);
+    ids = readdirSync(config.destination.path, { withFileTypes: true })
+      .flatMap((entry) => {
+        // Directories are uncompressed snapshots; regular files may be archives.
+        const isArchive = entry.isFile();
+        if (!entry.isDirectory() && !isArchive) return [];
+        const id = snapshotIdFromEntry(entry.name);
+        return id ? [{ id, compressed: isArchive }] : [];
+      });
   } catch (err: any) {
     if (err?.code === "ENOENT") return [];
     throw err;
   }
 
-  return entries
-    .sort()
-    .map((id) => ({ id, createdAt: snapshotDate(id) }));
+  return ids
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map(({ id, compressed }) => ({ id, createdAt: snapshotDate(id), compressed }));
 }

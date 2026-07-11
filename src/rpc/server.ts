@@ -1,6 +1,6 @@
 import { createInterface } from "node:readline";
 import type { Readable, Writable } from "node:stream";
-import { loadConfig, validateConfig, type CdvConfig } from "../config.js";
+import { loadConfig, validateConfig, writeConfig, type CdvConfig } from "../config.js";
 import { runBackup } from "../engine/index.js";
 import { CancelledError } from "../engine/types.js";
 import { listSnapshots } from "../vault/list.js";
@@ -89,7 +89,7 @@ export class RpcServer {
           pid: process.pid,
           platform: process.platform,
           methods: [
-            "vault.ping", "vault.info", "vault.validate",
+            "vault.ping", "vault.info", "vault.validate", "vault.read", "vault.write",
             "backup.start", "backup.cancel",
             "snapshot.list", "restore.start",
           ],
@@ -104,6 +104,43 @@ export class RpcServer {
           sources: config.sources.length,
           destination: config.destination.path,
           retention: config.retention?.keep ?? null,
+        });
+      }
+
+      case "vault.read": {
+        // Full config incl. actual source/destination paths — for the editor
+        // form (vault.validate only reports counts). Engine/mode are resolved to
+        // concrete values so the form shows what a run would actually use.
+        const config = this.requireConfig(params);
+        return this.reply(req.id, {
+          name: config.name,
+          engine: config.engine ?? (process.platform === "win32" ? "robocopy" : "builtin"),
+          mode: config.mode ?? "mirror",
+          sources: config.sources.map((s) => ({ path: s.path, exclude: s.exclude ?? [] })),
+          destination: { path: config.destination.path },
+          retention: config.retention ?? null,
+          compress: config.compress ?? false,
+        });
+      }
+
+      case "vault.write": {
+        // Validate + persist an edited config back to its `.cdv` file.
+        const configPath = params.configPath;
+        if (typeof configPath !== "string") {
+          return this.fail(req.id, ERR.invalidParams, "'configPath' is required");
+        }
+        if (!params.config || typeof params.config !== "object") {
+          return this.fail(req.id, ERR.invalidParams, "'config' object is required");
+        }
+        const saved = writeConfig(configPath, params.config as never);
+        return this.reply(req.id, {
+          name: saved.name,
+          engine: saved.engine ?? (process.platform === "win32" ? "robocopy" : "builtin"),
+          mode: saved.mode ?? "mirror",
+          sources: saved.sources.map((s) => ({ path: s.path, exclude: s.exclude ?? [] })),
+          destination: { path: saved.destination.path },
+          retention: saved.retention ?? null,
+          compress: saved.compress ?? false,
         });
       }
 
@@ -123,6 +160,7 @@ export class RpcServer {
         const snapshots = listSnapshots(config).map((s) => ({
           id: s.id,
           createdAt: s.createdAt ? s.createdAt.toISOString() : null,
+          compressed: s.compressed,
         }));
         return this.reply(req.id, { snapshots });
       }
@@ -132,7 +170,7 @@ export class RpcServer {
         const target = String(params.target ?? "");
         if (!target) return this.fail(req.id, ERR.invalidParams, "'target' is required");
         const snapshotId = params.snapshotId ? String(params.snapshotId) : undefined;
-        const restoredId = runRestore(config, target, snapshotId);
+        const restoredId = await runRestore(config, target, snapshotId);
         return this.reply(req.id, { restoredId, target });
       }
 

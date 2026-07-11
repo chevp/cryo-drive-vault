@@ -31,7 +31,7 @@ export async function run(argv: string[]): Promise<number> {
   if (idIdx >= 0) requestedId = argv[idIdx + 1];
 
   const config = loadConfig(first);
-  const restoredId = runRestore(config, target, requestedId);
+  const restoredId = await runRestore(config, target, requestedId);
 
   section(`restore: ${config.name}`);
   kv("snapshot", restoredId);

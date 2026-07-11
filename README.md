@@ -25,6 +25,7 @@ destination:
 # retention only applies to the builtin (snapshot) engine:
 # retention:
 #   keep: 7
+# compress: true       # builtin only: write each snapshot as a single <id>.tar.gz archive
 ```
 
 - `engine` — who moves the bytes. `robocopy` mirrors/syncs with no history; `builtin`
@@ -36,6 +37,10 @@ destination:
   With multiple sources, each is mirrored into `destination/<basename>`.
 - `destination.path` — the mirror root (robocopy), or where snapshot dirs go (builtin).
 - `retention.keep` — builtin only: number of recent snapshots to keep.
+- `compress` — builtin only: when `true`, each snapshot is written as a single
+  gzip-compressed tar archive (`<id>.tar.gz`) in the destination instead of a plain
+  directory. `list`/`restore`/`retention` handle both forms transparently. Needs the
+  system `tar` (bundled on Windows 10+, macOS and Linux).
 
 ## CLI
 

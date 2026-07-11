@@ -1,6 +1,7 @@
 import { cpSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import type { CdvConfig } from "../config.js";
+import { ARCHIVE_SUFFIX, extractArchive } from "./archive.js";
 import { listSnapshots } from "./list.js";
 
 export class RestoreError extends Error {}
@@ -20,12 +21,16 @@ export function resolveSnapshotId(config: CdvConfig, requestedId?: string): stri
   return latest.id;
 }
 
-export function runRestore(config: CdvConfig, targetDir: string, requestedId?: string): string {
+export async function runRestore(config: CdvConfig, targetDir: string, requestedId?: string): Promise<string> {
   const id = resolveSnapshotId(config, requestedId);
   const snapshotDir = join(config.destination.path, id);
-  if (!existsSync(snapshotDir)) {
-    throw new RestoreError(`snapshot directory '${snapshotDir}' is missing`);
+  const archivePath = join(config.destination.path, id + ARCHIVE_SUFFIX);
+  if (existsSync(snapshotDir)) {
+    cpSync(snapshotDir, targetDir, { recursive: true });
+  } else if (existsSync(archivePath)) {
+    await extractArchive(archivePath, targetDir);
+  } else {
+    throw new RestoreError(`snapshot '${id}' is missing from '${config.destination.path}'`);
   }
-  cpSync(snapshotDir, targetDir, { recursive: true });
   return id;
 }
